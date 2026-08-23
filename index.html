@@ -138,6 +138,11 @@
   main > .daylabel-row:first-child{margin-top:0;}
   .daylabel-row.today{background:var(--ink);}
   .daylabel-row.next{background:#e4e8f2;}
+  .daysection > summary.daylabel-row{cursor:pointer; list-style:none;}
+  .daysection > summary.daylabel-row::-webkit-details-marker{display:none;}
+  .daysection-right{display:flex; align-items:center; gap:8px; flex-shrink:0;}
+  .daylabel-row.today .chev{border-top-color:var(--paper);}
+  .daysection[open] > summary .chev{transform:rotate(180deg);}
   .daylabel{
     font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
   }
@@ -510,8 +515,20 @@ function render(){
       <h2>${beyond ? "No data loaded for this date" : "Term hasn't started yet"}</h2>
       <p>${beyond ? `This bulletin only has ${TERM.name} loaded (through ${fmtShort(TERM.end).n} ${fmtShort(TERM.end).m}).` : `${TERM.name} begins ${fmtShort(TERM.start).n} ${fmtShort(TERM.start).m}.`}
       ${TERM.nextTermStart && beyond ? `<br>Next known start: ${fmtShort(TERM.nextTermStart).n} ${fmtShort(TERM.nextTermStart).m}.` : ""}
-      Send the new term's menu, timetable and key dates whenever they land, and this gets refreshed.</p>
+      ${beyond ? `Send the new term's menu, timetable and key dates whenever they land, and this gets refreshed.` : ""}</p>
     </div>`;
+
+    // Before term starts, preview the first school day so there's still
+    // something concrete to see (not just "it hasn't started yet").
+    if(!beyond){
+      const nsd = nextSchoolDay(now);
+      if(nsd){
+        const nsdStr = iso(nsd);
+        const isImmediatelyTomorrow = nsdStr === iso(addDays(now,1));
+        const label = isImmediatelyTomorrow ? "Tomorrow" : `Next school day &#183; ${fmtDate(nsd)}`;
+        renderDaySection(main, label, nsdStr, nsd, null, false);
+      }
+    }
   } else {
 
   const week = schoolWeekFor(todayStr);
@@ -736,45 +753,65 @@ function renderDaySection(main, sectionLabel, dateStr, dateObj, nowHM, isToday){
   const menu = week ? MENUS[week.menuWeek][dow] : null;
   const uniform = UNIFORM_OVERRIDES[dateStr] || (tt ? tt.uniform : null);
 
-  let html = `<div class="daylabel-row ${isToday ? "today" : "next"}">
-      <span class="daylabel">${sectionLabel}${sectionLabel==="Today"||sectionLabel==="Tomorrow" ? " &#183; " + fmtDate(dateObj) : ""}</span>
-      ${uniform ? `<span class="uniform-badge${uniform==="PE kit"?" pe":""}">${uniform}</span>` : ""}
-    </div>`;
+  // Once it's past 6pm, collapse the whole section so the page's focus
+  // shifts to tomorrow rather than a "done" day.
+  const dayFinished = isToday && nowHM && nowHM >= "18:00";
+
+  const labelHtml = `${sectionLabel}${sectionLabel==="Today"||sectionLabel==="Tomorrow" ? " &#183; " + fmtDate(dateObj) : ""}`;
+  const badgeHtml = uniform ? `<span class="uniform-badge${uniform==="PE kit"?" pe":""}">${uniform}</span>` : "";
+
+  let body = "";
 
   eventsOn(dateStr).forEach(e => {
-    html += `<div class="alert"><span class="ico"><svg class="icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8.5a6 6 0 0 0-12 0c0 6.5-2.5 8.5-2.5 8.5h17s-2.5-2-2.5-8.5z"/><path d="M13.7 20.5a2 2 0 0 1-3.4 0"/></svg></span><span>${e.title}${e.time ? " at " + e.time : ""}${e.note ? " - " + e.note : ""}</span></div>`;
+    body += `<div class="alert"><span class="ico"><svg class="icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8.5a6 6 0 0 0-12 0c0 6.5-2.5 8.5-2.5 8.5h17s-2.5-2-2.5-8.5z"/><path d="M13.7 20.5a2 2 0 0 1-3.4 0"/></svg></span><span>${e.title}${e.time ? " at " + e.time : ""}${e.note ? " - " + e.note : ""}</span></div>`;
   });
 
   if(tt){
     const hint = timetableHint(tt, isToday, nowHM);
-    html += `<details class="card"><summary>
+    body += `<details class="card"><summary>
         <div class="sm-text"><div class="sm-eyebrow">Timetable</div><div class="sm-main">${hint}</div></div>
         <span class="chev"></span>
       </summary><table class="tt">`;
     tt.rows.forEach(r => {
       const [start,end,label,tag] = r;
       const isNow = isToday && nowHM && nowHM >= start && nowHM < end;
-      html += `<tr class="${isNow?"now":""}"><td class="time">${start}</td><td class="act">${label}${tag?`<span class="tt-tag">${tag}</span>`:""}</td></tr>`;
+      body += `<tr class="${isNow?"now":""}"><td class="time">${start}</td><td class="act">${label}${tag?`<span class="tt-tag">${tag}</span>`:""}</td></tr>`;
     });
-    html += `</table></details>`;
+    body += `</table></details>`;
   }
 
   if(menu){
-    html += `<details class="card"><summary>
+    body += `<details class="card"><summary>
         <div class="sm-text"><div class="sm-eyebrow">Food</div><div class="sm-main">${menu.main}</div></div>
         <span class="chev"></span>
       </summary><div class="menu-body">`;
-    html += menuLine("Snack", menu.snack);
-    html += menuLine("Soup", menu.soup);
-    html += menuLine("Vegetarian", menu.veg);
-    html += menuLine("On the side", menu.side);
-    if(menu.treat) html += menuLine("Treat", menu.treat);
-    html += `<div class="menu-footnote">Plus fresh fruit, yoghurt, jelly, a daily smoothie and salad bar.</div>`;
-    html += `<div class="allergen-key">${ALLERGEN_KEY}</div>`;
-    html += `</div></details>`;
+    body += menuLine("Snack", menu.snack);
+    body += menuLine("Soup", menu.soup);
+    body += menuLine("Vegetarian", menu.veg);
+    body += menuLine("On the side", menu.side);
+    if(menu.treat) body += menuLine("Treat", menu.treat);
+    body += `<div class="menu-footnote">Plus fresh fruit, yoghurt, jelly, a daily smoothie and salad bar.</div>`;
+    body += `<div class="allergen-key">${ALLERGEN_KEY}</div>`;
+    body += `</div></details>`;
   }
 
-  main.innerHTML += html;
+  if(dayFinished){
+    main.innerHTML += `<details class="daysection">
+      <summary class="daylabel-row today">
+        <span class="daylabel">${labelHtml}</span>
+        <span class="daysection-right">
+          ${badgeHtml}
+          <span class="chev"></span>
+        </span>
+      </summary>
+      <div class="daysection-body">${body}</div>
+    </details>`;
+  } else {
+    main.innerHTML += `<div class="daylabel-row ${isToday ? "today" : "next"}">
+      <span class="daylabel">${labelHtml}</span>
+      ${badgeHtml}
+    </div>${body}`;
+  }
 }
 
 function menuLine(label, text){
