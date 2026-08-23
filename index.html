@@ -281,6 +281,15 @@ const SCHOOL_WEEKS = [
   { start: "2026-12-07", end: "2026-12-10", menuWeek: 1 }
 ];
 
+// One-off exceptions to the normal weekday uniform pattern (e.g. school asks
+// for standard uniform on a day that would otherwise be a PE day). Keyed by
+// exact date - add a new line here per term as the school confirms them,
+// rather than changing TIMETABLE itself, since these are one-offs, not a
+// change to the regular weekly pattern.
+const UNIFORM_OVERRIDES = {
+  "2026-09-03": "Standard uniform" // First day of term - normal uniform, not PE kit, despite Thursday's usual PE slot
+};
+
 // Reception timetable, Monday-Friday. "uniform" drives the small badge shown
 // next to each day's heading - "PE kit" on PE days, "Standard uniform" otherwise.
 const TIMETABLE = {
@@ -725,10 +734,11 @@ function renderDaySection(main, sectionLabel, dateStr, dateObj, nowHM, isToday){
   const tt = TIMETABLE[dow];
   const week = schoolWeekFor(dateStr);
   const menu = week ? MENUS[week.menuWeek][dow] : null;
+  const uniform = UNIFORM_OVERRIDES[dateStr] || (tt ? tt.uniform : null);
 
   let html = `<div class="daylabel-row ${isToday ? "today" : "next"}">
       <span class="daylabel">${sectionLabel}${sectionLabel==="Today"||sectionLabel==="Tomorrow" ? " &#183; " + fmtDate(dateObj) : ""}</span>
-      ${tt ? `<span class="uniform-badge${tt.uniform==="PE kit"?" pe":""}">${tt.uniform}</span>` : ""}
+      ${uniform ? `<span class="uniform-badge${uniform==="PE kit"?" pe":""}">${uniform}</span>` : ""}
     </div>`;
 
   eventsOn(dateStr).filter(e => e.time).forEach(e => {
