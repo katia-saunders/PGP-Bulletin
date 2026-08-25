@@ -1,1 +1,1 @@
-# PGP-Reception-Bulletin
+# PGP-Bulletin
