@@ -1,0 +1,13 @@
+# Extra Key Dates
+#
+# One line per event, in this format:
+#   YYYY-MM-DD|HH:MM|Description
+#
+# Leave the time blank for an all-day event:
+#   YYYY-MM-DD||Description
+#
+# Lines starting with # (like these) are ignored, so use them for notes.
+# Delete the example lines below once you start adding your own.
+#
+# 2026-09-12|10:00|Book fair visit
+# 2026-09-25||Non-uniform day
