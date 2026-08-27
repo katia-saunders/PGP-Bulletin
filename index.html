@@ -483,6 +483,14 @@ const EVENTS = [
   { start:"2027-01-05", end:"2027-01-05", time:null, title:"Spring Term begins", cat:"term" }
 ];
 
+// Optional extra key dates loaded live from a plain-text file in the same
+// GitHub repo (edit that file any time and this picks it up - no need to
+// regenerate this page). See EXTRA_DATES_URL below for where it's fetched
+// from, and loadExtraDates()/parseExtraDatesText() near the bottom of this
+// script for the format and parsing.
+const EXTRA_DATES_URL = "https://raw.githubusercontent.com/katia-saunders/PGP-Bulletin/main/extra-dates.txt";
+let EXTRA_EVENTS = []; // replaced wholesale each time loadExtraDates() succeeds - never accumulated
+
 /* ================== END TERM DATA - template logic below ================== */
 
 const DAY_KEYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -503,11 +511,12 @@ function schoolWeekFor(dateStr){
 function breakFor(dateStr){
   return BREAKS.find(b => inRange(dateStr, b.start, b.end)) || null;
 }
+function allEvents(){ return EVENTS.concat(EXTRA_EVENTS); }
 function eventsOn(dateStr, pool){
-  return (pool || EVENTS).filter(e => inRange(dateStr, e.start, e.end));
+  return (pool || allEvents()).filter(e => inRange(dateStr, e.start, e.end));
 }
 function upcomingEvents(dateStr, limit, pool){
-  return (pool || EVENTS).filter(e => e.start > dateStr).sort((a,b)=>a.start<b.start?-1:1).slice(0, limit);
+  return (pool || allEvents()).filter(e => e.start > dateStr).sort((a,b)=>a.start<b.start?-1:1).slice(0, limit);
 }
 function nextSchoolDay(fromDate){
   for(let i=1;i<=45;i++){
@@ -618,7 +627,7 @@ function render(){
   // events - shown regardless of whether today falls inside the loaded term,
   // so "what's coming up" still works before term starts / after it ends.
   const todays = eventsOn(todayStr);
-  const totalUpcoming = EVENTS.filter(e => e.start > todayStr).length;
+  const totalUpcoming = allEvents().filter(e => e.start > todayStr).length;
   const upcoming = upcomingEvents(todayStr, upcomingLimit);
   if(todays.length || upcoming.length){
     let html = `<div class="card"><div class="card-head"><h2>What's coming up</h2>
@@ -753,7 +762,7 @@ function buildICS(filterCat){
   const dtstamp = icsUTC(new Date()); // real time, not the test-preview clock
   let n = 0;
 
-  const items = EVENTS.filter(e => {
+  const items = allEvents().filter(e => {
     const cat = e.cat || "event";
     return !filterCat || filterCat === "both" || cat === filterCat;
   });
@@ -947,9 +956,46 @@ function updateTestbarStatus(){
     : "Showing the real current UK time.";
 }
 
+// ---------- Extra key dates (live-loaded from GitHub) ----------
+
+// Expected file format, one event per line:
+//   YYYY-MM-DD|HH:MM|Description of the event
+// The time is optional - leave it blank for an all-day event:
+//   YYYY-MM-DD||Non-uniform day
+// Blank lines and lines starting with # are ignored (useful for notes/comments
+// at the top of the file). Whitespace around each field is trimmed.
+function parseExtraDatesText(text){
+  const events = [];
+  text.split("\n").forEach(rawLine => {
+    const line = rawLine.trim();
+    if(!line || line.startsWith("#")) return;
+    const parts = line.split("|");
+    if(parts.length < 3) return;
+    const date = parts[0].trim();
+    const time = parts[1].trim();
+    const title = parts.slice(2).join("|").trim();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date) || !title) return;
+    events.push({ start: date, end: date, time: time || null, title, cat: "event" });
+  });
+  return events;
+}
+
+function loadExtraDates(){
+  if(!EXTRA_DATES_URL) return;
+  fetch(EXTRA_DATES_URL + (EXTRA_DATES_URL.includes("?") ? "&" : "?") + "t=" + Date.now(), { cache: "no-store" })
+    .then(res => res.ok ? res.text() : Promise.reject())
+    .then(text => {
+      EXTRA_EVENTS = parseExtraDatesText(text);
+      render();
+    })
+    .catch(() => { /* offline, file not there yet, etc. - just carry on without it */ });
+}
+
 render();
 updateTestbarStatus();
+loadExtraDates();
 setInterval(render, 60000);
+setInterval(loadExtraDates, 5 * 60000); // also pick up edits made while the page stays open
 </script>
 </body>
 </html>
