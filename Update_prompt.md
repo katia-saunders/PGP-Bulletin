@@ -15,6 +15,10 @@ data that isn't covered by my attachments, since it spans the whole
 academic year rather than just this term, and the school can revise
 it at any time.
 
+Note: extra-dates.txt (the live-loaded file in the GitHub repo for
+ad-hoc dates) doesn't need any changes — it's fetched at runtime, not
+baked into this file, so leave that mechanism exactly as is.
+
 Also flag anything unusual for this term — one-off uniform
 exceptions, INSET days, changes to the menu's weekly rotation, etc.
 ```
@@ -24,3 +28,4 @@ exceptions, INSET days, changes to the menu's weekly rotation, etc.
 - [ ] Timetable PDF
 - [ ] Key dates spreadsheet
 - [ ] Any one-off exceptions to mention (e.g. uniform changes, INSET days)
+- [ ] extra-dates.txt entries for the old term can be cleared out once they're past — not required, just tidy
