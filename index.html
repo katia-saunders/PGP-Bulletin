@@ -344,7 +344,8 @@ const SCHOOL_WEEKS = [
 // rather than changing TIMETABLE itself, since these are one-offs, not a
 // change to the regular weekly pattern.
 const UNIFORM_OVERRIDES = {
-  "2026-09-03": "Standard uniform" // First day of term - normal uniform, not PE kit, despite Thursday's usual PE slot
+  "2026-09-03": "Standard uniform", // First day of term - normal uniform, not PE kit, despite Thursday's usual PE slot
+  "2026-09-23": "Winter uniform" // Individual, Sibling & Class Photos - winter uniform, not PE kit, despite Wednesday's usual PE slot
 };
 
 // Reception timetable, Monday-Friday. "uniform" drives the small badge shown
@@ -490,6 +491,14 @@ const EVENTS = [
 // script for the format and parsing.
 const EXTRA_DATES_URL = "https://raw.githubusercontent.com/katia-saunders/PGP-Bulletin/main/extra-dates.txt";
 let EXTRA_EVENTS = []; // replaced wholesale each time loadExtraDates() succeeds - never accumulated
+
+// Same idea as EXTRA_DATES_URL above, but for one-off uniform-badge
+// exceptions (e.g. "winter uniform, not PE kit, because of photos day").
+// Edit uniform-overrides.txt in the GitHub repo any time - no need to
+// regenerate this page. See loadUniformOverrides()/parseUniformOverridesText()
+// near the bottom of this script for the format and parsing.
+const UNIFORM_OVERRIDES_URL = "https://raw.githubusercontent.com/katia-saunders/PGP-Bulletin/main/uniform-overrides.txt";
+let EXTRA_UNIFORM_OVERRIDES = {}; // replaced wholesale each time loadUniformOverrides() succeeds
 
 /* ================== END TERM DATA - template logic below ================== */
 
@@ -837,7 +846,7 @@ function renderDaySection(main, sectionLabel, dateStr, dateObj, nowHM, isToday){
   const tt = TIMETABLE[dow];
   const week = schoolWeekFor(dateStr);
   const menu = week ? MENUS[week.menuWeek][dow] : null;
-  const uniform = UNIFORM_OVERRIDES[dateStr] || (tt ? tt.uniform : null);
+  const uniform = EXTRA_UNIFORM_OVERRIDES[dateStr] || UNIFORM_OVERRIDES[dateStr] || (tt ? tt.uniform : null);
 
   // Once it's past 6pm, collapse the whole section so the page's focus
   // shifts to tomorrow rather than a "done" day.
@@ -991,11 +1000,44 @@ function loadExtraDates(){
     .catch(() => { /* offline, file not there yet, etc. - just carry on without it */ });
 }
 
+// Expected file format, one override per line:
+//   YYYY-MM-DD|Label
+// e.g.:
+//   2026-09-23|Winter uniform
+// Blank lines and lines starting with # are ignored.
+function parseUniformOverridesText(text){
+  const overrides = {};
+  text.split("\n").forEach(rawLine => {
+    const line = rawLine.trim();
+    if(!line || line.startsWith("#")) return;
+    const parts = line.split("|");
+    if(parts.length < 2) return;
+    const date = parts[0].trim();
+    const label = parts.slice(1).join("|").trim();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date) || !label) return;
+    overrides[date] = label;
+  });
+  return overrides;
+}
+
+function loadUniformOverrides(){
+  if(!UNIFORM_OVERRIDES_URL) return;
+  fetch(UNIFORM_OVERRIDES_URL + (UNIFORM_OVERRIDES_URL.includes("?") ? "&" : "?") + "t=" + Date.now(), { cache: "no-store" })
+    .then(res => res.ok ? res.text() : Promise.reject())
+    .then(text => {
+      EXTRA_UNIFORM_OVERRIDES = parseUniformOverridesText(text);
+      render();
+    })
+    .catch(() => { /* offline, file not there yet, etc. - just carry on without it */ });
+}
+
 render();
 updateTestbarStatus();
 loadExtraDates();
+loadUniformOverrides();
 setInterval(render, 60000);
 setInterval(loadExtraDates, 5 * 60000); // also pick up edits made while the page stays open
+setInterval(loadUniformOverrides, 5 * 60000);
 </script>
 </body>
 </html>
