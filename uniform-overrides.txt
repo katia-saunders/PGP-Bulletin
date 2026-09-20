@@ -1,0 +1,12 @@
+# Uniform Overrides
+#
+# One line per exception, in this format:
+#   YYYY-MM-DD|Label
+#
+# Example:
+#   2026-10-15|Mufti day - wear own clothes
+#
+# Lines starting with # (like these) are ignored, so use them for notes.
+# Delete the example line below once you start adding your own.
+#
+# 2026-10-15|Mufti day - wear own clothes
