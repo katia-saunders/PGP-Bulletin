@@ -12,4 +12,4 @@
 # 2026-09-12|10:00|Book fair visit
 # 2026-09-25||Non-uniform day
 2026-09-07||Bring 'All about me' box
-2026-09-25|Bring "passport"
+2026-09-25||Bring "passport"
